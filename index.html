@@ -1,6 +1,171 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How's the house doing?</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f5f7fb;
+      color: #222;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    h2 {
+      margin: 0 0 12px;
+    }
+    .legend {
+      display: flex;
+      gap: 16px;
+      margin: 0 0 14px;
+      font-size: 12px;
+      color: #444;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+    .chart-wrap {
+      position: relative;
+      height: 420px;
+    }
+    .error {
+      color: red;
+      font-weight: 600;
+    }
+  </style>
+</head>
 <body>
-Does this load?
+  <div class="container">
+    <h2>How's the house doing?</h2>
+    <div class="chart-wrap">
+      <canvas id="performanceChart"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <script>
+    Chart.register(ChartDataLabels);
+
+    if (location.protocol === 'file:') {
+      throw new Error('Open this page from a local web server, not as a file:// page. Try: python -m http.server 8000');
+    }
+
+    fetch('./data.json')
+      .then(response => {
+        if (!response.ok) throw new Error('data.json not found');
+        return response.json();
+      })
+      .then(data => {
+        const sorted = data
+          .filter(item => item && item.date)
+          .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        if (sorted.length === 0) {
+          throw new Error('No data found');
+        }
+
+        const labels = sorted.map(item => item.date.slice(5));
+        const views = sorted.map(item => Number(item.views) || 0);
+        const saves = sorted.map(item => Number(item.saves) || 0);
+        const maxValue = Math.max(...views, ...saves, 0);
+        const paddedMax = Math.ceil((maxValue * 1.15) / 50) * 50;
+
+        new Chart(document.getElementById('performanceChart'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Views',
+                data: views,
+                backgroundColor: '#3b82f6',
+                borderRadius: 4,
+                maxBarThickness: 18,
+                datalabels: {
+                  color: '#1e3a8a',
+                  anchor: 'end',
+                  align: 'right',
+                  clamp: true,
+                  offset: 4,
+                  font: { weight: 'bold', size: 9 },
+                  formatter: value => value
+                }
+              },
+              {
+                label: 'Saves',
+                data: saves,
+                backgroundColor: '#10b981',
+                borderRadius: 4,
+                maxBarThickness: 18,
+                datalabels: {
+                  color: '#065f46',
+                  anchor: 'end',
+                  align: 'right',
+                  clamp: true,
+                  offset: 4,
+                  font: { weight: 'bold', size: 9 },
+                  formatter: value => value
+                }
+              }
+            ]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+              legend: {
+                position: 'bottom'
+              },
+              datalabels: {
+                display: true
+              }
+            },
+            scales: {
+              x: {
+                beginAtZero: true,
+                max: paddedMax,
+                title: {
+                  display: true,
+                  text: 'Count'
+                }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Date'
+                },
+                ticks: {
+                  autoSkip: false
+                }
+              }
+            }
+          },
+          plugins: [ChartDataLabels]
+        });
+      })
+      .catch(err => {
+        document.querySelector('.chart-wrap').innerHTML = '<div class="error">' + err.message + ' — add data.json or wait for the scheduled update.</div>';
+      });
+  </script>
 </body>
 </html>

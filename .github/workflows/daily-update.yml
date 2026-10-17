@@ -1,0 +1,31 @@
+name: Daily Data Fetch
+on:
+  schedule:
+    - cron: '0 17 * * *' # noon AZ
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Run script
+        env:
+          ZPID: ${{ secrets.ZPID }}
+          DATA_API_KEY: ${{ secrets.DATA_API_KEY }}
+        run: |
+          python scripts/fetch_data.py
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add data.json
+          git commit -m "Update daily data" || exit 0
+          git push
